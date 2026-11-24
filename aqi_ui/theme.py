@@ -48,7 +48,7 @@ def page_css(band: Optional[Band], aqi: Optional[float] = None) -> str:
     repeating-radial-gradient(circle at 50% 50%, #ffffff08 0 1px, transparent 1px 3px);
   filter: blur(2px);
 }}
-[data-testid="stAppViewContainer"], [data-testid="stSidebar"] {{ position: relative; z-index: 1; }}
+[data-testid="stAppViewContainer"] {{ z-index: 1; }}  /* already positioned by Streamlit; don't override */
 [data-testid="stHeader"] {{ background: transparent; }}
 [data-testid="stSidebar"] > div:first-child {{ background: #0b0f1bcc; backdrop-filter: blur(10px); }}
 .stApp p, .stApp li, .stApp label, .stApp input, .stApp textarea, .stApp td, .stApp th,

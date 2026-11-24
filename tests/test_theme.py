@@ -51,3 +51,13 @@ def test_haze_thicker_for_worse_air():
 
 def test_landing_mentions_examples():
     assert "Delhi" in landing_html()
+
+
+def test_layout_containers_keep_streamlit_positioning():
+    """Overriding position on Streamlit's app or sidebar containers makes them grow past the window, so nothing scrolls."""
+    import re
+    css = page_css(None)
+    for rule in re.findall(r"([^{}]*)\{([^{}]*)\}", css):
+        selector, body = rule
+        if ('stSidebar"]' in selector or 'stAppViewContainer"]' in selector) and "position" in body:
+            raise AssertionError(f"sidebar rule sets position: {selector.strip()}")

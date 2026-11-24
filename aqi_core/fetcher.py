@@ -11,6 +11,9 @@ from aqi_core.parser import parse_page
 ScrapeFn = Callable[[str], Tuple[int, str]]
 MapFn = Callable[[str, str], List[str]]
 
+# Firecrawl serves cached copies (hours old) unless told otherwise; aqi.in updates half-hourly.
+FRESH_MS = 10 * 60 * 1000
+
 
 @dataclass
 class FetchResult:
@@ -52,7 +55,7 @@ class AqiInClient:
         app = FirecrawlApp(api_key=api_key)
 
         def scrape(url: str) -> Tuple[int, str]:
-            data = app.scrape_url(url, params={"formats": ["markdown"], "timeout": 45000})
+            data = app.scrape_url(url, params={"formats": ["markdown"], "timeout": 45000, "maxAge": FRESH_MS})
             status = int((data.get("metadata") or {}).get("statusCode") or 0)
             return status, data.get("markdown") or ""
 

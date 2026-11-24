@@ -104,3 +104,27 @@ def test_map_failure_still_raises_fetch_failed():
     site.map_links = lambda base, q: (_ for _ in ()).throw(RuntimeError("map down"))
     with pytest.raises(FetchFailed):
         AqiInClient(site.scrape, site.map_links).fetch("Nowhere", "", "India")
+
+
+def test_from_firecrawl_asks_for_fresh_pages(monkeypatch, load_fixture):
+    import firecrawl
+
+    calls = []
+    page = load_fixture("new_delhi.md")
+
+    class FakeApp:
+        def __init__(self, api_key):
+            self.api_key = api_key
+
+        def scrape_url(self, url, params=None):
+            calls.append(params)
+            return {"markdown": page, "metadata": {"statusCode": 200}}
+
+        def map_url(self, url, params=None):
+            return {"links": []}
+
+    monkeypatch.setattr(firecrawl, "FirecrawlApp", FakeApp)
+    AqiInClient.from_firecrawl("fc-x").fetch("New Delhi", "Delhi", "India")
+    assert calls and calls[0]["formats"] == ["markdown"]
+    # Firecrawl serves hours-old cached copies by default; aqi.in updates every 30 min.
+    assert 0 <= calls[0]["maxAge"] <= 600_000

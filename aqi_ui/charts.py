@@ -65,8 +65,10 @@ def stations_figure(stations: List[Station], n: int = 5) -> Optional[go.Figure]:
         hovertemplate="%{y}<br>AQI %{x}<extra></extra>",
     ))
     fig.update_yaxes(autorange="reversed", gridcolor="rgba(0,0,0,0)")
-    fig.update_xaxes(showticklabels=False, showgrid=False)
-    return _style(fig, max(160, 34 * len(chosen) + 30))
+    fig.update_xaxes(showticklabels=False, showgrid=False, range=[0, max(s.aqi for s in chosen) * 1.15])
+    fig = _style(fig, max(160, 34 * len(chosen) + 30))
+    fig.update_layout(margin=dict(l=8, r=48, t=12, b=8))  # room for the value labels
+    return fig
 
 
 def _discrete_scale(zmax: int = 500):

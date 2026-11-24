@@ -51,7 +51,13 @@ def page_css(band: Optional[Band], aqi: Optional[float] = None) -> str:
 [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {{ position: relative; z-index: 1; }}
 [data-testid="stHeader"] {{ background: transparent; }}
 [data-testid="stSidebar"] > div:first-child {{ background: #0b0f1bcc; backdrop-filter: blur(10px); }}
-h1, h2, h3, .hero-num, .tile-value {{ font-family: 'Bricolage Grotesque', system-ui, sans-serif; }}
+.stApp p, .stApp li, .stApp label, .stApp input, .stApp textarea, .stApp td, .stApp th,
+.stApp button, .stApp [data-testid="stMarkdownContainer"], .stApp [data-testid="stCaptionContainer"] {{
+  font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important;
+}}
+.stApp h1, .stApp h2, .stApp h3, .stApp h1 *, .stApp h2 *, .stApp h3 *, .hero-num, .tile-value {{
+  font-family: 'Bricolage Grotesque', system-ui, sans-serif !important;
+}}
 h2, h3 {{ font-weight: 600; letter-spacing: -0.01em; }}
 [data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid="stVerticalBlock"]) {{
   background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10) !important;

@@ -40,7 +40,7 @@ Based on the AQI Analysis Agent from
 **Code quality**
 - Shared logic lives in `aqi_core/` (fetching, parsing, AQI standards, timing, agent, report) and
   `aqi_ui/` (theme and charts) instead of being copied into both apps.
-- 74 automated tests, run against real saved aqi.in pages (`tests/fixtures/`).
+- 81 automated tests, run against real saved aqi.in pages (`tests/fixtures/`).
 
 **Security**
 - The Gradio app no longer opens a public link by default (set `GRADIO_SHARE=1` to opt in).

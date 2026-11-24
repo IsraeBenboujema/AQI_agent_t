@@ -152,5 +152,5 @@ def landing_html() -> str:
   <h1>What are you breathing today?</h1>
   <p>Enter a city and what you plan to do outside. You'll get live readings from aqi.in,
   the cleanest hours of the day, the cleanest neighbourhoods nearby, and advice for your plans.</p>
-  <p>Try Delhi, Mumbai, New York or Rabat.</p>
+  <p>Try Delhi or Mumbai (India), New York (United States) or Rabat (Morocco).</p>
 </div>"""

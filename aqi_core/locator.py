@@ -8,8 +8,13 @@ BASE = "https://www.aqi.in/dashboard"
 _SUBPAGES = {"pm", "pm10", "co", "so2", "no2", "o3", "historical-analysis"}
 
 
+# Letters NFKD cannot split into base + accent.
+_EXTRA = str.maketrans({"ł": "l", "Ł": "L", "đ": "d", "Đ": "D", "ø": "o", "Ø": "O", "ß": "ss",
+                        "æ": "ae", "Æ": "AE", "œ": "oe", "Œ": "OE", "ı": "i", "þ": "th", "ð": "d"})
+
+
 def slugify(text: str) -> str:
-    ascii_text = unicodedata.normalize("NFKD", text or "").encode("ascii", "ignore").decode()
+    ascii_text = unicodedata.normalize("NFKD", (text or "").translate(_EXTRA)).encode("ascii", "ignore").decode()
     return re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-")
 
 

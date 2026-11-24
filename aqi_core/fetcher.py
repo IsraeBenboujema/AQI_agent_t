@@ -13,6 +13,8 @@ MapFn = Callable[[str, str], List[str]]
 
 # Firecrawl serves cached copies (hours old) unless told otherwise; aqi.in updates half-hourly.
 FRESH_MS = 10 * 60 * 1000
+SCRAPE_TIMEOUT_MS = 20_000
+TIME_BUDGET_S = 75  # never keep the user waiting longer than this
 
 
 @dataclass
@@ -41,11 +43,13 @@ class AqiInClient:
         map_links: MapFn,
         ttl_seconds: int = 1800,
         clock: Callable[[], float] = time.time,
+        time_budget_seconds: float = TIME_BUDGET_S,
     ) -> None:
         self._scrape = scrape
         self._map_links = map_links
         self._ttl = ttl_seconds
         self._clock = clock
+        self._budget = time_budget_seconds
         self._cache: Dict[Tuple[str, str, str], Tuple[float, AqiReading]] = {}
 
     @classmethod
@@ -55,7 +59,7 @@ class AqiInClient:
         app = FirecrawlApp(api_key=api_key)
 
         def scrape(url: str) -> Tuple[int, str]:
-            data = app.scrape_url(url, params={"formats": ["markdown"], "timeout": 45000, "maxAge": FRESH_MS})
+            data = app.scrape_url(url, params={"formats": ["markdown"], "timeout": SCRAPE_TIMEOUT_MS, "maxAge": FRESH_MS})
             status = int((data.get("metadata") or {}).get("statusCode") or 0)
             return status, data.get("markdown") or ""
 
@@ -70,21 +74,35 @@ class AqiInClient:
         if cached and self._clock() - cached[0] < self._ttl:
             return FetchResult(cached[1], [cached[1].url], from_cache=True)
 
+        if not key[0] or not key[2]:
+            raise FetchFailed(city, [], "Type the city and country in Latin letters (for example Beijing, China).")
+
         tried: List[str] = []
         errors: List[str] = []
+        started = self._clock()
+
+        def out_of_time() -> bool:
+            if self._clock() - started > self._budget:
+                errors.append(f"The search took too long (over {self._budget:.0f} s); aqi.in or Firecrawl may be slow.")
+                return True
+            return False
 
         for url in candidate_urls(city, state, country):
+            if out_of_time():
+                raise FetchFailed(city, tried, errors[-1])
             reading = self._try(url, city, tried, errors)
             if reading:
                 return self._remember(key, reading, tried)
 
+        if out_of_time():
+            raise FetchFailed(city, tried, errors[-1])
         try:
             links = self._map_links(f"{BASE}/{slugify(country)}", city)
         except Exception as exc:  # network/quota: report it, don't crash
             errors.append(str(exc))
             links = []
         found = pick_dashboard_link(links, city, exclude=set(tried))
-        if found:
+        if found and not out_of_time():
             reading = self._try(found, city, tried, errors)
             if reading:
                 return self._remember(key, reading, tried)
@@ -100,6 +118,8 @@ class AqiInClient:
                 break
             except Exception as exc:
                 errors.append(str(exc))
+                if "timeout" in str(exc).lower() or "timed out" in str(exc).lower():
+                    break  # a slow page will be slow again; don't double the wait
         if page is None:
             return None
         status, markdown = page

@@ -61,3 +61,7 @@ def test_layout_containers_keep_streamlit_positioning():
         selector, body = rule
         if ('stSidebar"]' in selector or 'stAppViewContainer"]' in selector) and "position" in body:
             raise AssertionError(f"sidebar rule sets position: {selector.strip()}")
+
+
+def test_landing_examples_name_their_country():
+    assert "New York (United States)" in landing_html()

@@ -48,3 +48,11 @@ def test_pick_link_prefers_exact_and_skips_pollutant_pages():
 
 def test_pick_link_none():
     assert pick_dashboard_link(["https://www.aqi.in/dashboard/india/goa/panaji"], "Mumbai", set()) is None
+
+
+def test_slugify_letters_nfkd_cannot_split():
+    assert slugify("Łódź") == "lodz"
+    assert slugify("Thủ Đức") == "thu-duc"
+    assert slugify("Wrocław") == "wroclaw"
+    assert slugify("Ørsted") == "orsted"
+    assert slugify("Straße") == "strasse"

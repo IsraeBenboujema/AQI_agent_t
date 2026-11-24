@@ -128,3 +128,34 @@ def test_from_firecrawl_asks_for_fresh_pages(monkeypatch, load_fixture):
     assert calls and calls[0]["formats"] == ["markdown"]
     # Firecrawl serves hours-old cached copies by default; aqi.in updates every 30 min.
     assert 0 <= calls[0]["maxAge"] <= 600_000
+    assert calls[0]["timeout"] <= 20_000
+
+
+def test_timeouts_are_not_retried():
+    urls = ["https://www.aqi.in/dashboard/india/maharashtra/mumbai", "https://www.aqi.in/dashboard/india/mumbai"]
+    site = FakeSite({u: RuntimeError("Request Timeout: scrape timed out") for u in urls})
+    with pytest.raises(FetchFailed):
+        make(site).fetch("Mumbai", "Maharashtra", "India")
+    assert site.scrapes == urls
+
+
+def test_total_time_budget_stops_the_search():
+    clock = Clock()
+    site = FakeSite({})
+
+    def slow_404(url):
+        site.scrapes.append(url)
+        clock.now += 40
+        return 404, "not found"
+
+    client = AqiInClient(slow_404, site.map_links, clock=clock, time_budget_seconds=60)
+    with pytest.raises(FetchFailed, match="too long"):
+        client.fetch("Mumbai", "Maharashtra", "India")
+    assert site.maps == []
+
+
+def test_empty_city_slug_fails_without_scraping():
+    site = FakeSite({})
+    with pytest.raises(FetchFailed):
+        make(site).fetch("北京", "", "China")
+    assert site.scrapes == [] and site.maps == []

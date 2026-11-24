@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.pyc
+aqi_history.db
+
+.superpowers/
+.venv/
+.gradio/
+*.zip

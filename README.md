@@ -1,92 +1,104 @@
 # 🌍 AQI Analysis Agent
 
-### 🎓 FREE Step-by-Step Tutorial 
-**👉 [Click here to follow our complete step-by-step tutorial](https://www.theunwindai.com/p/build-an-aqi-analysis-agent) and learn how to build this from scratch with detailed code walkthroughs, explanations, and best practices.**
+Live air quality for any city on [aqi.in](https://www.aqi.in), turned into a clear picture and
+personal health advice for what you plan to do outside.
 
+![The app showing New Delhi on a severe day](docs/screenshot-delhi.png)
 
-The AQI Analysis Agent is a powerful air quality monitoring and health recommendation tool powered by Firecrawl and Agno's AI Agent framework. This app helps users make informed decisions about outdoor activities by analyzing real-time air quality data and providing personalized health recommendations.
+Based on the AQI Analysis Agent from
+[awesome-llm-apps](https://github.com/Shubhamsaboo/awesome-llm-apps) (original tutorial:
+[theunwindai.com](https://www.theunwindai.com/p/build-an-aqi-analysis-agent)), redesigned and extended.
 
-## Features
+## What changed in this version
 
-- **Multi-Agent System**
-    - **AQI Analyzer**: Fetches and processes real-time air quality data
-    - **Health Recommendation Agent**: Generates personalized health advice
+**New features**
+- **Glowing AQI headline.** The page takes on the colour of the current air: green on a clean day,
+  purple on a severe one, with a haze that thickens as pollution gets worse. It shows the AQI, its
+  category, the city's world pollution rank and when aqi.in last updated it.
+- **All six pollutants.** PM2.5, PM10, CO, NO₂, SO₂ and O₃ (the original showed three), each with a
+  bar showing how far it is above or below the WHO guideline.
+- **Last 24 hours + best time to go out.** A half-hourly chart from aqi.in with the cleanest daytime
+  window for your activity highlighted (between 6 AM and 9 PM, as long as your activity). The AI
+  advice uses that real window instead of guessing.
+- **Cleanest and most polluted neighbourhoods.** Every monitoring station aqi.in lists for the city,
+  ranked, so you can pick where to go.
+- **The year at a glance.** A calendar heatmap of the daily AQI for every day this year.
+- **Better PDF report** with every pollutant, the best window, the source page and update time.
 
-- **Air Quality Metrics**:
-  - Overall Air Quality Index (AQI)
-  - Particulate Matter (PM2.5 and PM10)
-  - Carbon Monoxide (CO) levels
-  - Temperature
-  - Humidity
-  - Wind Speed
+**Reliability and correctness**
+- **One fast scrape instead of a slow extract.** The app reads the aqi.in page once (≈1 Firecrawl
+  credit, a few seconds) and parses it itself, instead of Firecrawl's `extract` on a wildcard URL.
+- **Finds the right page.** It tries the likely aqi.in addresses, then searches aqi.in (Firecrawl
+  map) — so "New York" lands on New York City — and checks the page really is the city you asked for.
+- **Fresh data.** Firecrawl served hours-old cached copies by default; the app now asks for pages at
+  most 10 minutes old, and keeps its own 30-minute cache so repeat checks are instant.
+- **Correct AQI scale.** aqi.in reports US AQI; the original rated that number on India's CPCB scale,
+  so Delhi's 260 showed as "Poor" instead of aqi.in's "Severe". Fixed.
+- **Clear errors.** A misspelt city, a Firecrawl failure or an AI rate limit produce a plain message;
+  readings and charts stay on screen when only the AI part fails. No more silent all-zero readings.
 
-- **Comprehensive Analysis**:
-  - Real-time data visualization
-  - Health impact assessment
-  - Activity safety recommendations
-  - Best time suggestions for outdoor activities
-  - Weather condition correlations
+**Code quality**
+- Shared logic lives in `aqi_core/` (fetching, parsing, AQI standards, timing, agent, report) and
+  `aqi_ui/` (theme and charts) instead of being copied into both apps.
+- 74 automated tests, run against real saved aqi.in pages (`tests/fixtures/`).
 
-- **Exposure & trend insights**:
-  - Estimated PM2.5 mass inhaled for your activity (breathing rate × duration)
-  - Cigarette-equivalent and share of a WHO guideline day
-  - Reading-vs-guideline bar chart and a 7-day AQI trend from local history (SQLite)
+**Security**
+- The Gradio app no longer opens a public link by default (set `GRADIO_SHARE=1` to opt in).
+- Neither app shows your `.env` keys in the page; key fields are empty and fall back to `.env`.
 
-- **Interactive Features**:
-  - Location-based analysis
-  - Medical condition considerations
-  - Activity-specific recommendations
-  - Streaming recommendations and downloadable reports
-  - Example queries for quick testing
+## How it works
 
-## How to Run
+```
+city, activity ──► find aqi.in page ──► Firecrawl scrape (markdown) ──► parser ──► AqiReading
+                                                                                      │
+             dark Streamlit UI ◄── charts + best window + dose estimate ◄────────────┤
+                    ▲                                                                 │
+                    └──────────── streamed advice ◄── agno agent (OpenRouter LLM) ◄───┘
+```
 
-Follow these steps to set up and run the application:
+| Folder / file | What it does |
+|---|---|
+| `aqi_core/locator.py`, `fetcher.py` | Find the aqi.in page, scrape it, validate, retry, cache |
+| `aqi_core/parser.py` | Turn the page into an `AqiReading` (pollutants, 24h, stations, calendar) |
+| `aqi_core/standards.py`, `timing.py` | AQI bands, WHO limits, inhaled dose, best time window |
+| `aqi_core/agent.py`, `report.py` | AI health advice, PDF report |
+| `aqi_ui/theme.py`, `charts.py` | Glowing dark theme and Plotly charts |
+| `ai_aqi_analysis_agent_streamlit.py` | Main app |
+| `ai_aqi_analysis_agent_gradio.py` | Classic Gradio app on the same core |
 
-1. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/Shubhamsaboo/awesome-llm-apps.git
-   cd advanced_ai_agents/multi_agent_apps/ai_aqi_analysis_agent
+## How to run (Windows)
+
+1. **Create a virtual environment.** This folder's path is very long, and Windows can't load some
+   libraries from a venv inside it, so put the venv on a short path:
+   ```powershell
+   py -3.12 -m venv C:\Users\<you>\.venvs\aqi
+   C:\Users\<you>\.venvs\aqi\Scripts\python -m pip install -r requirements.txt
+   ```
+   (On macOS/Linux a normal `python -m venv .venv` inside the project is fine.)
+
+2. **Add your API keys.** Copy `.env.example` to `.env` and fill in:
+   - `FIRECRAWL_API_KEY` from [firecrawl.dev](https://www.firecrawl.dev/app/api-keys)
+   - `OPENROUTER_API_KEY` from [openrouter.ai/keys](https://openrouter.ai/keys)
+   - optionally `OPENROUTER_MODEL` (any ID from [openrouter.ai/models](https://openrouter.ai/models))
+
+   Never share or commit `.env`: it holds your keys.
+
+3. **Start the app:**
+   ```powershell
+   C:\Users\<you>\.venvs\aqi\Scripts\python -m streamlit run ai_aqi_analysis_agent_streamlit.py
+   ```
+   It opens at http://localhost:8501. Try Delhi, Mumbai (Maharashtra), New York (United States)
+   or Rabat (Morocco). Restart it after editing code in `aqi_core/` or `aqi_ui/`.
+
+   The classic Gradio version: `C:\Users\<you>\.venvs\aqi\Scripts\python ai_aqi_analysis_agent_gradio.py`
+
+4. **Run the tests:**
+   ```powershell
+   C:\Users\<you>\.venvs\aqi\Scripts\python -m pytest -q
    ```
 
-2. **Install the dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
+## Notes
 
-3. **Set up your API keys**:
-    - Get an OpenRouter API key from: https://openrouter.ai/keys
-    - Get a Firecrawl API key from: [Firecrawl website](https://www.firecrawl.dev/app/api-keys)
-    - Either enter them in the app's API Configuration section, or copy `.env.example` to `.env` and fill in `FIRECRAWL_API_KEY` and `OPENROUTER_API_KEY`
-    - Optionally set `OPENROUTER_MODEL` to any model ID from https://openrouter.ai/models (defaults to `nvidia/nemotron-3-ultra-550b-a55b:free`)
-
-4. **Run the Gradio app**:
-    ```bash
-    python ai_aqi_analysis_agent_gradio.py
-    ```
-
-5. **Access the Web Interface**:
-    - The terminal will display two URLs:
-      - Local URL: `http://127.0.0.1:7860` (for local access)
-      - Public URL: `https://xxx-xxx-xxx.gradio.live` (for temporary public access)
-    - Click on either URL to open the web interface in your browser
-
-## Usage
-
-1. Enter your API keys in the API Configuration section
-2. Input location details:
-   - City name
-   - State (optional for Union Territories/US cities)
-   - Country
-3. Provide personal information:
-   - Medical conditions (optional)
-   - Planned outdoor activity
-4. Click "Analyze & Get Recommendations" to receive:
-   - Current air quality data
-   - Health impact analysis
-   - Activity safety recommendations
-5. Try the example queries for quick testing
-
-## Note
-
-The air quality data is fetched using Firecrawl's web scraping capabilities. Due to caching and rate limiting, the data might not always match real-time values on the website. For the most accurate real-time data, consider checking the source website directly.
+- Data comes only from aqi.in, which blocks plain automated requests; Firecrawl gets the page.
+- "Best time" is the cleanest stretch of the **last** 24 hours: a daily pattern, not a forecast.
+- The dose and cigarette comparisons are mass-based estimates for information, not medical advice.

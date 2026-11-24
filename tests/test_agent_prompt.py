@@ -34,3 +34,11 @@ def test_stream_error_propagates(monkeypatch, delhi_reading, user):
     monkeypatch.setattr(agent.agent, "run", boom)
     with pytest.raises(RuntimeError, match="429"):
         list(agent.stream_recommendations(delhi_reading, user, {}, None))
+
+
+def test_real_agno_error_raises_instead_of_becoming_advice(delhi_reading, user):
+    """agno swallows model errors and yields them as content; they must surface as exceptions."""
+    agent = HealthRecommendationAgent("sk-bogus", "some/model", "http://127.0.0.1:9")  # closed port
+    agent.agent.model.max_retries = 0
+    with pytest.raises(RuntimeError):
+        list(agent.stream_recommendations(delhi_reading, user, {}, None))

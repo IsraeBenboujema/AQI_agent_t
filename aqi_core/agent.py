@@ -78,6 +78,10 @@ Be concise and concrete. Use the numbers above rather than inventing any.
 """
 
 
+class ModelError(RuntimeError):
+    """The LLM provider reported an error (rate limit, bad key, unknown model)."""
+
+
 class HealthRecommendationAgent:
     def __init__(self, openrouter_key: str, model_id: str = DEFAULT_MODEL,
                  base_url: str = OPENROUTER_BASE_URL) -> None:
@@ -94,19 +98,25 @@ class HealthRecommendationAgent:
         accumulated = ""
         try:
             for event in self.agent.run(prompt, stream=True):
+                kind = getattr(event, "event", None)
                 content = getattr(event, "content", None)
-                if not content or not isinstance(content, str):
+                if kind == "RunError":
+                    # agno catches model errors (rate limit, bad key) and yields them as events
+                    raise ModelError(content or "The model returned an error.")
+                if kind not in (None, "RunContent") or not content or not isinstance(content, str):
                     continue
                 # agno may emit deltas or the cumulative string depending on version
                 delta = content[len(accumulated):] if content.startswith(accumulated) else content
                 if delta:
                     accumulated += delta
                     yield delta
-        except Exception:
-            if accumulated.strip():
+        except Exception as exc:
+            if isinstance(exc, ModelError) or accumulated.strip():
                 raise
         if not accumulated.strip():
             fallback = self.agent.run(prompt)
             text = getattr(fallback, "content", "") or ""
+            if str(getattr(fallback, "status", "")).upper().endswith("ERROR"):
+                raise ModelError(text or "The model returned an error.")
             if text:
                 yield text

@@ -13,7 +13,7 @@ from datetime import datetime
 import pandas as pd
 from dotenv import load_dotenv
 
-from aqi_standards import (
+from aqi_core.standards import (
     DEFAULT_ACTIVITY,
     DEFAULT_DURATION_MIN,
     WHO_PM25_24H,

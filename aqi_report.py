@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Dict, Optional
 from urllib.parse import quote
 
-from aqi_standards import ACTIVITY_PROFILES, WHO_PM25_24H
+from aqi_core.standards import ACTIVITY_PROFILES, WHO_PM25_24H
 
 REPORTS_DIR = os.path.join(tempfile.gettempdir(), "aqi-reports")
 

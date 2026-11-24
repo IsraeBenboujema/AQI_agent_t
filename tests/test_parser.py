@@ -69,3 +69,13 @@ def test_no_live_reading(load_fixture, name):
     md = load_fixture(name) if name else ""
     with pytest.raises(NoLiveReading):
         parse_page(md, "https://www.aqi.in/x")
+
+
+def test_new_york_city_seconds_and_own_clock_times(load_fixture):
+    r = parse_page(load_fixture("new_york_city.md"),
+                   "https://www.aqi.in/dashboard/united-states/new-york/new-york-city")
+    assert r.place == "New York City"
+    assert r.updated_at == datetime(2026, 11, 23, 20, 51, 2)
+    assert len(r.history) == 48
+    assert r.history[-1] == (datetime(2026, 11, 23, 20, 31), 26)
+    assert r.history[0] == (datetime(2026, 11, 22, 21, 1), 46)

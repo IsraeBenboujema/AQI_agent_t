@@ -12,7 +12,7 @@ from aqi_core.models import AqiReading, NoLiveReading, Station
 
 _AQI_RE = re.compile(r"(\d+)\s*AQI \(US\)")
 _PLACE_RE = re.compile(r"^# (.+?) Air Quality Index", re.M)
-_UPDATED_RE = re.compile(r"Last Updated: \*\*(\d{4}-\d{2}-\d{2} \d{2}:\d{2})\*\*")
+_UPDATED_RE = re.compile(r"Last Updated: \*\*(\d{4}-\d{2}-\d{2} \d{2}:\d{2}(?::\d{2})?)\*\*")
 _RANK_RE = re.compile(r"Rank(\d+)(?:st|nd|rd|th)")
 _NUMBER = r"(-?\d+(?:\.\d+)?)"
 
@@ -71,9 +71,17 @@ def _history(markdown: str, updated_at: Optional[datetime]) -> List[Tuple[dateti
     if updated_at is None:
         return []
     _, body = _section(markdown, r"^## Historical Air Quality Data.*$")
-    values = [int(v) for _, v in _HISTORY_ROW_RE.findall(body)]
-    count = len(values)
-    return [(updated_at - timedelta(minutes=30 * (count - 1 - i)), v) for i, v in enumerate(values)]
+    rows = _HISTORY_ROW_RE.findall(body)
+    if not rows:
+        return []
+    # Rows carry their own clock times (half-hourly); the last one is the latest
+    # reading, at or shortly before the page's "Last Updated" time.
+    clock = datetime.strptime(rows[-1][0], "%I:%M%p").time()
+    last = datetime.combine(updated_at.date(), clock)
+    if last > updated_at + timedelta(hours=1):
+        last -= timedelta(days=1)
+    count = len(rows)
+    return [(last - timedelta(minutes=30 * (count - 1 - i)), int(v)) for i, (_, v) in enumerate(rows)]
 
 
 def _stations(markdown: str) -> List[Station]:
@@ -127,7 +135,10 @@ def parse_page(markdown: str, url: str) -> AqiReading:
     place = place_match.group(1).replace("\\", "").strip() if place_match else ""
 
     updated_match = _UPDATED_RE.search(markdown)
-    updated_at = datetime.strptime(updated_match.group(1), "%Y-%m-%d %H:%M") if updated_match else None
+    updated_at = None
+    if updated_match:
+        stamp = updated_match.group(1)
+        updated_at = datetime.strptime(stamp, "%Y-%m-%d %H:%M:%S" if stamp.count(":") == 2 else "%Y-%m-%d %H:%M")
 
     rank_match = _RANK_RE.search(markdown)
     block = _readings_block(markdown, aqi_match)
